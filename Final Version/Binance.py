@@ -6,9 +6,14 @@ import time
 import pandas as pd
 import hashlib
 
+# I will show you how exactly to get these API Keys
+# But first, let's update our function that gets the candlestick data 
+# to get more than just the limit of 1000 candles. It will be useful
+# in case we want to backtest our strategies over a longer period
+
 binance_keys = {
-	'api_key': "key",
-	'secret_key': "key"
+	'api_key': "PLACE_API_KEY_HERE",
+	'secret_key': "PLACE_SECRET_KEY_HERE"
 }
 
 class Binance:
@@ -25,7 +30,7 @@ class Binance:
 		}
 
 		self.headers = {"X-MBX-APIKEY": binance_keys['api_key']}
-
+	
 	def GetTradingSymbols(self, quoteAssets:list=None):
 		''' Gets All symbols which are tradable (currently) '''
 		url = self.base + self.endpoints["exchangeInfo"]
@@ -47,13 +52,37 @@ class Binance:
 
 		return symbols_list
 
-	def GetSymbolData(self, symbol:str, interval:str):
+	def GetLongerSymbolData(self, symbol:str, interval:str, limit:int=1000, end_time=False):
+		# Basicall, we will be calling the GetSymbolData as many times as we need 
+		# in order to get all the historical data required (based on the limit parameter)
+		# and we'll be merging the results into one long dataframe.
+
+		repeat_rounds = 0
+		if limit > 1000:
+			repeat_rounds = int(limit/1000)
+		initial_limit = limit % 1000
+		if initial_limit == 0:
+			initial_limit = 1000
+		# First, we get the last initial_limit candles, starting at end_time and going
+		# backwards (or starting in the present moment, if end_time is False)
+		df = self.GetSymbolData(symbol, interval, limit=initial_limit, end_time=end_time)
+		while repeat_rounds > 0:
+			# Then, for every other 1000 candles, we get them, but starting at the beginning
+			# of the previously received candles.
+			df2 = self.GetSymbolData(symbol, interval, limit=1000, eend_time=df['time'[0]])
+			df = df2.append(df, ignore_index = True)
+			repeat_rounds = repeat_rounds - 1
+		
+		return df
+
+	def GetSymbolData(self, symbol:str, interval:str, limit:int=1000, end_time=False):
 		''' 
 		Gets trading data for one symbol 
 		
 		Parameters
 		--
 			symbol str:        The symbol for which to get the trading data
+
 			interval str:      The interval on which to get the trading data
 				minutes      '1m' '3m' '5m' '15m' '30m'
 				hours        '1h' '2h' '4h' '6h' '8h' '12h'
@@ -62,7 +91,12 @@ class Binance:
 				months       '1M;
 		'''
 
-		params = '?&symbol='+symbol+'&interval='+interval
+		if limit > 1000:
+			return self.GetLongerSymbolData(symbol, interval, limit. end_time)
+		
+		params = '?&symbol='+symbol+'&interval='+interval+'&limit='+str(limit)
+		if end_time:
+			params = params + '&endTime=' + str(int(end_time))
 
 		url = self.base + self.endpoints['klines'] + params
 
@@ -91,19 +125,24 @@ class Binance:
 
 		'''
 		Places an order on Binance
+
 		Parameters
 		--
 			symbol str:        The symbol for which to get the trading data
+
 			side str:          The side of the order 'BUY' or 'SELL'
+
 			type str:          The type, 'LIMIT', 'MARKET', 'STOP_LOSS'
+
 			quantity float:    .....
+
 		'''
 
 		params = {
 			'symbol': symbol,
 			'side': side, 			# BUY or SELL
 			'type': type,				# MARKET, LIMIT, STOP LOSS etc
-			'quantity': quantity,
+			'quoteOrderQty': quantity,
 			'recvWindow': 5000,
 			'timestamp': int(round(time.time()*1000))
 		}
@@ -153,7 +192,7 @@ class Binance:
 			print("Exception occured when trying to cancel order on "+url)
 			print(e)
 			data = {'code': '-1', 'msg':e}
-
+		
 		return json.loads(data)
 
 	def GetOrderInfo(self, symbol:str, orderId:str):
