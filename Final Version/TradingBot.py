@@ -1,11 +1,8 @@
 from StrategyEvaluator import StrategyEvaluator
-from Strategies import Strategies
-
+from Strategies import * # Strategies
 from Binance import Binance
 from TradingModel import TradingModel
-
 import json
-
 from decimal import Decimal, getcontext
 
 # Now, We will put everything together. Continuing with our command line interface, we will allow ourselves
@@ -15,8 +12,8 @@ from decimal import Decimal, getcontext
 
 # We will update this function a little bit, to make it more customizable
 def BacktestStrategies(symbols=[], interval='4h', plot=False, strategy_evaluators=[], 
-options = dict(starting_balance=100, initial_profits = 1.01, initial_stop_loss = 0.9, 
-incremental_profits = 1.005, incremental_stop_loss = 0.995)):
+options = dict(starting_balance=100, initial_profits = 1.012, initial_stop_loss = 0.9, 
+incremental_profits = 1.006, incremental_stop_loss = 0.996)):
 	coins_tested = 0
 	trade_value = options['starting_balance']
 	for symbol in symbols:
@@ -25,7 +22,7 @@ incremental_profits = 1.005, incremental_stop_loss = 0.995)):
 		for evaluator in strategy_evaluators:
 			resulting_balance = evaluator.backtest(
 				model,
-				starting_balance=options['starting_balance'],
+				starting_balance = options['starting_balance'],
 				initial_profits = options['initial_profits'],
 				initial_stop_loss = options['initial_stop_loss'],
 				incremental_profits = options['incremental_profits'],
@@ -51,13 +48,11 @@ incremental_profits = 1.005, incremental_stop_loss = 0.995)):
 	for evaluator in strategy_evaluators:
 		print("")
 		evaluator.printResults()
-	
 
 # Now, We will write the function that checks the current market conditions 
 # & allows us to place orders if the conditions are good
 
 # But First, We need to define the messages that the user will see:
-
 strategy_matched_symbol = "\nStragey Matched Symbol! \
 	\nType 'b' then ENTER to backtest the strategy on this symbol & see the plot \
 	\nType 'p' then ENTER if you want to Place an Order \
@@ -67,8 +62,8 @@ ask_place_order = "\nType 'p' then ENTER if you want to Place an Order \
 	\nTyping anything else or pressing ENTER directly will skip placing an order this time.\n"
 
 def EvaluateStrategies(symbols=[], strategy_evaluators=[], interval='1h', 
-options = dict(starting_balance=100, initial_profits = 1.01, initial_stop_loss = 0.9, 
-incremental_profits = 1.005, incremental_stop_loss = 0.995)):
+options = dict(starting_balance=100, initial_profits = 1.012, initial_stop_loss = 0.9, 
+incremental_profits = 1.006, incremental_stop_loss = 0.996)):
 	for symbol in symbols:
 		print(symbol)
 		model = TradingModel(symbol=symbol, timeframe=interval)
@@ -113,7 +108,6 @@ incremental_profits = 1.005, incremental_stop_loss = 0.995)):
 						print(order_result)
 
 # Now, we're almost ready to start the bot. Let's add our third strategy and some commands.
-
 opening_text = "\nWelcome to Tudor's Crypto Trading Bot. \n \
 	Press 'b' (ENTER) to backtest all strategies \n \
 	Press 'e' (ENTER) to execute the strategies on all coins \n \
@@ -122,12 +116,13 @@ opening_text = "\nWelcome to Tudor's Crypto Trading Bot. \n \
 def Main():
 
 	exchange = Binance()
-	symbols = exchange.GetTradingSymbols(quoteAssets=["ETH"])
+	symbols = exchange.GetTradingSymbols(quoteAssets=["BTC", "USDT", "ETH"])
 
 	strategy_evaluators = [
-		StrategyEvaluator(strategy_function=Strategies.bollStrategy),
-		StrategyEvaluator(strategy_function=Strategies.maStrategy),
-		StrategyEvaluator(strategy_function=Strategies.ichimokuBullish)
+		# StrategyEvaluator(strategy_function=Strategies.bollStrategy),
+		# StrategyEvaluator(strategy_function=Strategies.maStrategy),
+		# StrategyEvaluator(strategy_function=Strategies.ichimokuBullish),
+		StrategyEvaluator(strategy_function=strategies_dict['ma_crossover'])
 	]
 
 	print(opening_text)
@@ -138,9 +133,9 @@ def Main():
 		answer = input()
 
 	if answer == 'e':
-		EvaluateStrategies(symbols=symbols, interval='5m', strategy_evaluators=strategy_evaluators)
+		EvaluateStrategies(symbols=symbols, interval='1h', strategy_evaluators=strategy_evaluators)
 	if answer == 'b':
-		BacktestStrategies(symbols=symbols, interval='5m', plot=True, strategy_evaluators=strategy_evaluators)
+		BacktestStrategies(symbols=symbols, interval='1h', plot=False, strategy_evaluators=strategy_evaluators)
 	if answer == 'q':
 		print("\nBYE!\n")
 

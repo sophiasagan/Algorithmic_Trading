@@ -12,17 +12,20 @@ class TradingModel:
 	# We can now remove the code where we're computing the indicators from this class,
 	# As we will be computing them in the Strategies class (on a per-need basis)
 
-
 	def __init__(self, symbol, timeframe:str='4h'):
 		self.symbol = symbol
 		self.timeframe = timeframe
 		self.exchange = Binance()
-		self.df = self.exchange.GetSymbolData(symbol, timeframe)
+		self.df = self.exchange.GetSymbolKlines(symbol, timeframe, 10000)
 		self.last_price = self.df['close'][len(self.df['close'])-1]
 
 	# We'll look directly in the dataframe to see what indicators we're plotting
 
-	def plotData(self, buy_signals = False, sell_signals = False, plot_title:str=""):
+	def plotData(self, buy_signals = False, sell_signals = False, plot_title:str="",
+	indicators=[
+		dict(col_name="fast_ema", color="indianred", name="FAST EMA"), 
+		dict(col_name="50_ema", color="indianred", name="50 EMA"), 
+		dict(col_name="200_ema", color="indianred", name="200 EMA")]):
 		df = self.df
 
 		# plot candlestick chart
@@ -35,6 +38,31 @@ class TradingModel:
 			name = "Candlesticks")
 
 		data = [candle]
+
+		for item in indicators:
+			if df.__contains__(item['col_name']):
+				fsma = go.Scatter(
+					x = df['time'],
+					y = df[item['col_name']],
+					name = item['name'],
+					line = dict(color = (item['color'])))
+				data.append(fsma)
+
+		# if df.__contains__('50_ema'):
+		# 	fsma = go.Scatter(
+		# 		x = df['time'],
+		# 		y = df['50_ema'],
+		# 		name = "50 EMA",
+		# 		line = dict(color = ('rgba(102, 207, 255, 50)')))
+		# 	data.append(fsma)
+
+		# if df.__contains__('200_ema'):
+		# 	fsma = go.Scatter(
+		# 		x = df['time'],
+		# 		y = df['200_ema'],
+		# 		name = "200 EMA",
+		# 		line = dict(color = ('rgba(102, 207, 255, 50)')))
+		# 	data.append(fsma)
 
 		if df.__contains__('fast_sma'):
 			fsma = go.Scatter(
